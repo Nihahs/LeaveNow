@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [78.3521, 17.4368],
+          [78.3722, 17.4451]
+        ]
+      },
+      "properties": {
+        "durationInSeconds": 1620,
+        "durationTrafficInSeconds": 1740,
+        "distanceInMeters": 7050,
+        "trafficCongestion": "Heavy",
+        "legs": [
+          {
+            "distanceInMeters": 1200,
+            "durationInSeconds": 250,
+            "departureAt": "2026-09-16T08:30:00+05:30",
+            "arrivalAt": "2026-09-16T08:34:10+05:30"
+          },
+          {
+            "distanceInMeters": 1400,
+            "durationInSeconds": 300,
+            "departureAt": "2026-09-16T08:34:10+05:30",
+            "arrivalAt": "2026-09-16T08:39:10+05:30"
+          },
+          {
+            "distanceInMeters": 1300,
+            "durationInSeconds": 280
+          },
+          {
+            "distanceInMeters": 1650,
+            "durationInSeconds": 510
+          },
+          {
+            "distanceInMeters": 1500,
+            "durationInSeconds": 400
+          }
+        ]
+      }
+    }
+  ]
+}

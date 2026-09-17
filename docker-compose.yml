@@ -1,0 +1,40 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      MOCK_AZURE: ${MOCK_AZURE:-true}
+      AZURE_MAPS_KEY: ${AZURE_MAPS_KEY:-}
+      DATABASE_URL: sqlite+aiosqlite:////data/leavenow.db
+      CACHE_TTL_HOURS: ${CACHE_TTL_HOURS:-6}
+      STALE_MAX_HOURS: ${STALE_MAX_HOURS:-24}
+      CACHE_BUCKET_MINUTES: ${CACHE_BUCKET_MINUTES:-15}
+      MAX_AZURE_CONCURRENCY: ${MAX_AZURE_CONCURRENCY:-5}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Kolkata}
+    volumes:
+      - leavenow-data:/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+
+volumes:
+  leavenow-data:
