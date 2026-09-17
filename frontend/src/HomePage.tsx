@@ -34,9 +34,16 @@ function timeLabel(value: string): string {
   }).format(new Date(value));
 }
 
-function minutesAgo(value: string): string {
+function relativeAge(value: string): string {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
-  return minutes === 0 ? "just now" : `${minutes} min ago`;
+  if (minutes === 0) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+
+  const days = Math.floor(hours / 24);
+  return `${days} ${days === 1 ? "day" : "days"} ago`;
 }
 
 function dateLabel(value: string): string {
@@ -149,7 +156,7 @@ export function HomePage() {
           </p>
         )}
         <div className="freshness">
-          Updated {minutesAgo(recommendation.updatedAt)}
+          Updated {relativeAge(recommendation.updatedAt)}
           {recommendation.stale && <span className="stale-badge">Cached</span>}
           {recommendation.calibration.applied && (
             <span className="calibration-badge">
