@@ -128,33 +128,10 @@ a {
   letter-spacing: 0.11em;
 }
 
-.hero-card h1.range-recommendation {
-  font-size: clamp(2.6rem, 10vw, 5.2rem);
-  letter-spacing: -0.055em;
-}
-
 .supporting {
   margin: 25px 0 10px;
   color: var(--muted);
   font-size: 1.08rem;
-}
-
-.range-explanation,
-.equivalent-line {
-  max-width: 470px;
-  margin: 2px 0 0;
-  line-height: 1.45;
-}
-
-.range-explanation {
-  color: var(--muted);
-}
-
-.equivalent-line {
-  margin-top: 10px;
-  color: var(--accent-dark);
-  font-size: 0.9rem;
-  font-weight: 750;
 }
 
 .why-line {
@@ -269,10 +246,6 @@ a {
 
 .chart-wrap {
   margin: 0 -12px;
-}
-
-.chart-note {
-  margin-top: 4px;
 }
 
 .signal-list {

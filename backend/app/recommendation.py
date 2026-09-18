@@ -21,7 +21,6 @@ from app.providers import TrafficProvider, TrafficProviderError
 from app.schemas import (
     BestWindowSchema,
     CalibrationSchema,
-    GoodWindowSchema,
     RecommendationPointSchema,
     RecommendationSchema,
     SignalDelaySchema,
@@ -67,25 +66,13 @@ class RecommendationService:
         if datetime.now(UTC) - generated_at > timedelta(hours=self.settings.stale_max_hours):
             return None
         payload = json.loads(record.response_json)
-        if (
-            "calibration" not in payload
-            or "goodWindows" not in payload
-            or "trafficIsFlat" not in payload
-        ):
+        if "calibration" not in payload:
             return None
         payload["stale"] = bool(payload.get("stale")) or (
             datetime.now(UTC) - generated_at
             > timedelta(hours=self.settings.cache_ttl_hours)
         )
-        result = RecommendationSchema.model_validate(payload)
-        now = datetime.now(UTC)
-        if (
-            result.goodWindows
-            and result.goodWindows[0].start.astimezone(UTC) < now
-            and result.series[-1].departAt.astimezone(UTC) >= now
-        ):
-            return None
-        return result
+        return RecommendationSchema.model_validate(payload)
 
     async def build(
         self,
@@ -145,21 +132,7 @@ class RecommendationService:
                     ],
                 )
             )
-        now_local = datetime.now(ZoneInfo(route.timezone))
-        eligible_series = (
-            [point for point in series if point.departAt >= now_local]
-            if service_date == now_local.date()
-            else series
-        )
-        if not eligible_series:
-            raise ValueError("No future departure times remain in today's window")
-        best_start, best_end, window_points = _best_window(eligible_series)
-        good_windows = _good_windows(
-            eligible_series,
-            interval_minutes=interval_minutes,
-            total_tolerance_minutes=1.0,
-            score_tolerance_seconds=60.0,
-        )
+        best_start, best_end, window_points = _best_window(series)
         recommended = min(window_points, key=lambda point: (point.score, point.departAt))
         generated_at = datetime.now(UTC)
         result = RecommendationSchema(
@@ -172,24 +145,6 @@ class RecommendationService:
                 meanScore=round(
                     sum(point.score for point in window_points) / len(window_points), 1
                 ),
-            ),
-            goodWindows=[
-                GoodWindowSchema(
-                    start=points[0].departAt,
-                    end=points[-1].departAt,
-                    expectedTotalMinutes=round(
-                        sum(point.totalMinutes for point in points) / len(points), 1
-                    ),
-                    expectedDelayMin=round(
-                        sum(point.delayMinutes for point in points) / len(points), 1
-                    ),
-                )
-                for points in good_windows
-            ],
-            practicalToleranceMin=1.0,
-            trafficIsFlat=(
-                len(good_windows) == 1
-                and len(good_windows[0]) == len(eligible_series)
             ),
             recommendedDeparture=recommended.departAt,
             series=series,
@@ -438,36 +393,6 @@ def _best_window(
         return point.departAt, point.departAt + timedelta(minutes=10), [point]
     _, start, end, points = min(choices, key=lambda item: (item[0], item[1]))
     return start, end, points
-
-
-def _good_windows(
-    series: list[RecommendationPointSchema],
-    *,
-    interval_minutes: int,
-    total_tolerance_minutes: float,
-    score_tolerance_seconds: float,
-) -> list[list[RecommendationPointSchema]]:
-    if not series:
-        return []
-    best_total = min(point.totalMinutes for point in series)
-    best_score = min(point.score for point in series)
-    qualifying = [
-        point
-        for point in series
-        if point.totalMinutes <= best_total + total_tolerance_minutes
-        and point.score <= best_score + score_tolerance_seconds
-    ]
-    groups: list[list[RecommendationPointSchema]] = []
-    for point in qualifying:
-        if (
-            not groups
-            or point.departAt - groups[-1][-1].departAt
-            > timedelta(minutes=interval_minutes)
-        ):
-            groups.append([point])
-        else:
-            groups[-1].append(point)
-    return groups
 
 
 def _bucket_departure(value: datetime, bucket_minutes: int) -> datetime:
