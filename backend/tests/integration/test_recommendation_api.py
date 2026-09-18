@@ -116,7 +116,7 @@ async def test_route_supports_a_configurable_number_of_signals() -> None:
         recommendation = await client.get(
             "/api/recommendation",
             params={
-                "date": date(2026, 9, 18).isoformat(),
+                "date": date(2027, 9, 18).isoformat(),
                 "windowStart": "08:00",
                 "windowEnd": "09:00",
                 "intervalMinutes": 5,

@@ -72,7 +72,14 @@ class RecommendationService:
             datetime.now(UTC) - generated_at
             > timedelta(hours=self.settings.cache_ttl_hours)
         )
-        return RecommendationSchema.model_validate(payload)
+        result = RecommendationSchema.model_validate(payload)
+        now = datetime.now(UTC)
+        if (
+            result.recommendedDeparture.astimezone(UTC) < now
+            and result.series[-1].departAt.astimezone(UTC) >= now
+        ):
+            return None
+        return result
 
     async def build(
         self,
@@ -132,7 +139,10 @@ class RecommendationService:
                     ],
                 )
             )
-        best_start, best_end, window_points = _best_window(series)
+        eligible_series = _eligible_series(series, service_date, route.timezone)
+        if not eligible_series:
+            raise ValueError("No future departure times remain in today's window")
+        best_start, best_end, window_points = _best_window(eligible_series)
         recommended = min(window_points, key=lambda point: (point.score, point.departAt))
         generated_at = datetime.now(UTC)
         result = RecommendationSchema(
@@ -393,6 +403,19 @@ def _best_window(
         return point.departAt, point.departAt + timedelta(minutes=10), [point]
     _, start, end, points = min(choices, key=lambda item: (item[0], item[1]))
     return start, end, points
+
+
+def _eligible_series(
+    series: list[RecommendationPointSchema],
+    service_date: date,
+    timezone: str,
+    *,
+    now: datetime | None = None,
+) -> list[RecommendationPointSchema]:
+    current = now or datetime.now(ZoneInfo(timezone))
+    if service_date != current.date():
+        return series
+    return [point for point in series if point.departAt >= current]
 
 
 def _bucket_departure(value: datetime, bucket_minutes: int) -> datetime:
