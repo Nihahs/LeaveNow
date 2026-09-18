@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
+  Cell,
   CartesianGrid,
   ReferenceArea,
   ResponsiveContainer,
@@ -32,6 +33,41 @@ function timeLabel(value: string): string {
     minute: "2-digit",
     hour12: true,
   }).format(new Date(value));
+}
+
+function timeRangeLabel(start: string, end: string): string {
+  if (start === end) return timeLabel(start);
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const startPeriod = new Intl.DateTimeFormat("en-IN", {
+    hour: "numeric",
+    hour12: true,
+  })
+    .formatToParts(startDate)
+    .find((part) => part.type === "dayPeriod")?.value;
+  const endPeriod = new Intl.DateTimeFormat("en-IN", {
+    hour: "numeric",
+    hour12: true,
+  })
+    .formatToParts(endDate)
+    .find((part) => part.type === "dayPeriod")?.value;
+  if (startPeriod === endPeriod) {
+    const startTime = timeLabel(start).replace(/\s?[ap]m$/i, "");
+    return `${startTime}-${timeLabel(end)}`;
+  }
+  return `${timeLabel(start)}-${timeLabel(end)}`;
+}
+
+function isInsideGoodWindow(
+  departAt: string,
+  windows: Recommendation["goodWindows"],
+): boolean {
+  const candidate = new Date(departAt).getTime();
+  return windows.some(
+    (window) =>
+      candidate >= new Date(window.start).getTime() &&
+      candidate <= new Date(window.end).getTime(),
+  );
 }
 
 function relativeAge(value: string): string {
@@ -137,18 +173,51 @@ export function HomePage() {
   const extraMinutes = costlyPoint
     ? Math.max(0, Math.round(costlyPoint.totalMinutes - recommendedPoint.totalMinutes))
     : 0;
+  const primaryGoodWindow = recommendation.goodWindows[0] ?? {
+    start: recommendation.recommendedDeparture,
+    end: recommendation.recommendedDeparture,
+    expectedTotalMinutes: recommendedPoint.totalMinutes,
+    expectedDelayMin: recommendedPoint.delayMinutes,
+  };
+  const showsRange = primaryGoodWindow.start !== primaryGoodWindow.end;
 
   return (
     <>
       <section className="hero-card">
-        <p className="eyebrow">Best time for your commute</p>
-        <h1>
-          <span>LEAVE AT</span>
-          {timeLabel(recommendation.recommendedDeparture)}
+        <p className="eyebrow">
+          {recommendation.trafficIsFlat
+            ? "Traffic is flat this morning"
+            : "Best time for your commute"}
+        </p>
+        <h1 className={showsRange ? "range-recommendation" : undefined}>
+          <span>
+            {recommendation.trafficIsFlat
+              ? "LEAVE ANYTIME"
+              : showsRange
+                ? "LEAVE BETWEEN"
+                : "LEAVE AT"}
+          </span>
+          {timeRangeLabel(primaryGoodWindow.start, primaryGoodWindow.end)}
         </h1>
         <p className="supporting">
-          ~{Math.round(recommendedPoint.delayMinutes)} min stuck in traffic
+          ~{Math.round(primaryGoodWindow.expectedDelayMin)} min stuck in traffic
         </p>
+        {showsRange && (
+          <p className="range-explanation">
+            {recommendation.trafficIsFlat
+              ? `Every remaining option is within ${recommendation.practicalToleranceMin} minute of the best trip.`
+              : `Any time in this window should take about ${Math.round(primaryGoodWindow.expectedTotalMinutes)} minutes.`}
+          </p>
+        )}
+        {recommendation.goodWindows.length > 1 && (
+          <p className="equivalent-line">
+            Also good:{" "}
+            {recommendation.goodWindows
+              .slice(1)
+              .map((window) => timeRangeLabel(window.start, window.end))
+              .join(", ")}
+          </p>
+        )}
         {costlyPoint && extraMinutes > 0 && (
           <p className="why-line">
             Leaving at {timeLabel(costlyPoint.departAt)} costs you{" "}
@@ -184,8 +253,8 @@ export function HomePage() {
               <h2>Minutes lost by departure time</h2>
             </div>
             <span className="window-pill">
-              Best {timeLabel(recommendation.bestWindow.start)}-
-              {timeLabel(recommendation.bestWindow.end)}
+              {recommendation.trafficIsFlat ? "Flat" : "Good"}{" "}
+              {timeRangeLabel(primaryGoodWindow.start, primaryGoodWindow.end)}
             </span>
           </div>
           <div className="chart-wrap" aria-label="Delay by departure time chart">
@@ -203,16 +272,35 @@ export function HomePage() {
                   labelFormatter={(value) => timeLabel(String(value))}
                   formatter={(value) => [`${value} min`, "Delay"]}
                 />
-                <ReferenceArea
-                  x1={recommendation.bestWindow.start}
-                  x2={recommendation.bestWindow.end}
-                  fill="#0f766e"
-                  fillOpacity={0.14}
-                />
-                <Bar dataKey="delayMinutes" fill="#0f766e" radius={[4, 4, 0, 0]} />
+                {recommendation.goodWindows.map((window) => (
+                  <ReferenceArea
+                    key={`${window.start}-${window.end}`}
+                    x1={window.start}
+                    x2={window.end}
+                    fill="#0f766e"
+                    fillOpacity={0.12}
+                  />
+                ))}
+                <Bar dataKey="delayMinutes" radius={[4, 4, 0, 0]}>
+                  {recommendation.series.map((point) => (
+                    <Cell
+                      key={point.departAt}
+                      fill={
+                        isInsideGoodWindow(point.departAt, recommendation.goodWindows)
+                          ? "#0f766e"
+                          : "#a9b8b5"
+                      }
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
+          <p className="estimate-note chart-note">
+            Green times are within {recommendation.practicalToleranceMin} minute of the best
+            expected trip and within the weighted signal-delay tolerance. Traffic predictions are
+            cached in 15-minute blocks.
+          </p>
 
           <div className="signal-list">
             <p className="eyebrow">At the recommended time</p>

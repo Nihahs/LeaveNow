@@ -92,6 +92,13 @@ Ties choose the earlier window. The configured start and end are practical const
 to the earliest and latest times you would genuinely consider leaving, rather than asking the
 optimizer to compare unusable times.
 
+The user-facing recommendation groups consecutive departures into practical good windows when
+they are within one minute of the shortest expected trip and within 60 weighted score-seconds of
+the best score. This avoids implying false precision when several departures are effectively
+equivalent. For the current day, elapsed departure times are excluded from the recommended range.
+If every remaining departure is within that tolerance, the hero explicitly reports that traffic
+is flat instead of presenting one arbitrary time as uniquely optimal.
+
 Actual commute logs calibrate future recommendations when a matching cached prediction exists for
 the logged route, weekday, and 15-minute departure bucket. LeaveNow compares actual total duration
 and observed signal waits with the prediction, then applies residual corrections weighted by

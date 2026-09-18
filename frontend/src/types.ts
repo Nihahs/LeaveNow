@@ -42,6 +42,14 @@ export interface Recommendation {
     expectedDelayMin: number;
     meanScore: number;
   };
+  goodWindows: Array<{
+    start: string;
+    end: string;
+    expectedTotalMinutes: number;
+    expectedDelayMin: number;
+  }>;
+  practicalToleranceMin: number;
+  trafficIsFlat: boolean;
   recommendedDeparture: string;
   series: RecommendationPoint[];
   updatedAt: string;

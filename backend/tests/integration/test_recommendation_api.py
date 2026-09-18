@@ -36,6 +36,9 @@ async def test_recommendation_works_in_mock_mode() -> None:
     assert len(payload["series"][0]["signalDelays"]) == 4
     assert payload["stale"] is False
     assert payload["calibration"]["sampleCount"] >= 0
+    assert payload["goodWindows"]
+    assert payload["practicalToleranceMin"] == 1
+    assert isinstance(payload["trafficIsFlat"], bool)
 
 
 @pytest.mark.asyncio
@@ -116,7 +119,7 @@ async def test_route_supports_a_configurable_number_of_signals() -> None:
         recommendation = await client.get(
             "/api/recommendation",
             params={
-                "date": date(2026, 9, 18).isoformat(),
+                "date": date(2027, 9, 18).isoformat(),
                 "windowStart": "08:00",
                 "windowEnd": "09:00",
                 "intervalMinutes": 5,

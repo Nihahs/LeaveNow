@@ -81,6 +81,13 @@ class BestWindowSchema(BaseModel):
     meanScore: float
 
 
+class GoodWindowSchema(BaseModel):
+    start: datetime
+    end: datetime
+    expectedTotalMinutes: float
+    expectedDelayMin: float
+
+
 class CalibrationSchema(BaseModel):
     applied: bool
     sampleCount: int
@@ -89,6 +96,9 @@ class CalibrationSchema(BaseModel):
 
 class RecommendationSchema(BaseModel):
     bestWindow: BestWindowSchema
+    goodWindows: list[GoodWindowSchema]
+    practicalToleranceMin: float
+    trafficIsFlat: bool
     recommendedDeparture: datetime
     series: list[RecommendationPointSchema]
     updatedAt: datetime
